@@ -15,7 +15,7 @@ describe('rerun', function() {
 
   let proc
   const rerun = (...args) => {
-    proc = spawn('rerun', args, {
+    proc = spawn(require.resolve('..'), args, {
       cwd: __dirname,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
