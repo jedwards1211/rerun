@@ -5,6 +5,9 @@
   "main": "index.js",
   "author": "Andy Edwards",
   "license": "MIT",
+  "engines": {
+    "node": ">=12"
+  },
   "bin": {
     "rerun": "./index.js"
   },
@@ -67,10 +70,15 @@
     "url": "https://github.com/jedwards1211/rerun.git"
   },
   "keywords": [
+    "development",
     "launch",
+    "monitor",
+    "restart",
+    "reload",
+    "rerun",
+    "terminal",
     "watch",
-    "file-watcher",
-    "rerun"
+    "watcher"
   ],
   "bugs": {
     "url": "https://github.com/jedwards1211/rerun/issues"
@@ -96,7 +104,7 @@
     "prettier": "^1.15.1",
     "prettier-eslint": "^8.8.2",
     "promisify-child-process": "^4.1.1",
-    "semantic-release": "^15.13.3",
+    "semantic-release": "^17.1.2",
     "strip-ansi": "^6.0.0",
     "waait": "^1.0.5"
   },
