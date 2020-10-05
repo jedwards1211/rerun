@@ -1,4 +1,7 @@
 {
+  "parserOptions": {
+    "ecmaVersion": 10
+  },
   "env": {
     "mocha": true
   }
