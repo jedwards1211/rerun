@@ -54,6 +54,7 @@ function handleExit(code, signal) {
   } else {
     retryCount = 3
   }
+  // istanbul ignore next
   if (process.send) process.send({ code, signal })
 }
 function handleError(error) {
@@ -61,6 +62,7 @@ function handleError(error) {
   console.error(
     chalk`{red [rerun] error spawning {bold ${command}}: ${error.message}}`
   )
+  // istanbul ignore next
   if (process.send) process.send({ error: error.message })
 }
 
