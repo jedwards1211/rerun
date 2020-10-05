@@ -16,8 +16,11 @@ jobs:
           name: Install Dependencies
           command: yarn install --frozen-lockfile
       - run:
-          name: release
-          command: yarn run semantic-release || true
+          name: build
+          command: yarn prepublishOnl
       - run:
           name: upload test coverage
           command: yarn codecov || true
+      - run:
+          name: release
+          command: yarn run semantic-release || true
