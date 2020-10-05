@@ -11,7 +11,7 @@ const dedent = require('dedent')
 const temp = path.resolve(__dirname, '..', 'temp')
 
 describe('rerun', function() {
-  this.timeout(3000)
+  this.timeout(10000)
 
   let proc
   const rerun = (...args) => {
