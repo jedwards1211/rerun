@@ -86,10 +86,14 @@ describe('rerun', function() {
       dedent`
         [rerun] spawning echo...
         [rerun] echo exited with code 0
-        [rerun] File changed: /Users/andy/rerun/temp/a.json.  Restarting...
+        [rerun] File changed: ${path.join(temp, 'a.json')}.  Restarting...
         [rerun] spawning echo...
         [rerun] echo exited with code 0
-        [rerun] File changed: /Users/andy/rerun/temp/subdir/b.js.  Restarting...
+        [rerun] File changed: ${path.join(
+          temp,
+          'subdir',
+          'b.js'
+        )}.  Restarting...
         [rerun] spawning echo...
         [rerun] echo exited with code 0\n`
     )
@@ -116,16 +120,16 @@ describe('rerun', function() {
     expect(stripAnsi(stderr)).to.equal(
       dedent`
         [rerun] spawning cat...
-        cat: /Users/andy/rerun/temp/foo.txt: No such file or directory
+        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
         [rerun] cat exited with code 1, 3 retries remaining
         [rerun] spawning cat...
-        cat: /Users/andy/rerun/temp/foo.txt: No such file or directory
+        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
         [rerun] cat exited with code 1, 2 retries remaining
         [rerun] spawning cat...
-        cat: /Users/andy/rerun/temp/foo.txt: No such file or directory
+        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
         [rerun] cat exited with code 1, 1 retries remaining
         [rerun] spawning cat...
-        cat: /Users/andy/rerun/temp/foo.txt: No such file or directory
+        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
         [rerun] cat exited with code 1, 0 retries remaining\n`
     )
   })
