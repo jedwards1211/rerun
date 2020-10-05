@@ -17,7 +17,7 @@ jobs:
           command: yarn install --frozen-lockfile
       - run:
           name: build
-          command: yarn prepublishOnl
+          command: yarn prepublishOnly
       - run:
           name: upload test coverage
           command: yarn codecov || true
