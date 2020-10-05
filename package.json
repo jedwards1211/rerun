@@ -37,8 +37,7 @@
   },
   "lint-staged": {
     "*.{js,json,css,md}": [
-      "prettier --write",
-      "git add"
+      "prettier --write"
     ]
   },
   "config": {
@@ -85,19 +84,19 @@
   },
   "homepage": "https://github.com/jedwards1211/rerun#readme",
   "devDependencies": {
-    "@commitlint/cli": "^6.0.2",
-    "@commitlint/config-conventional": "^6.0.2",
-    "@jedwards1211/commitlint-config": "^1.0.0",
+    "@commitlint/cli": "^11.0.0",
+    "@commitlint/config-conventional": "^11.0.0",
+    "@jedwards1211/commitlint-config": "^1.0.1",
     "@jedwards1211/eslint-config": "^2.0.0",
     "chai": "^4.1.2",
-    "codecov": "^3.0.0",
+    "codecov": "^3.7.2",
     "cross-env": "^5.2.0",
     "dedent": "^0.7.0",
     "eslint": "^7.10.0",
     "eslint-config-prettier": "^6.12.0",
-    "husky": "^1.1.4",
+    "husky": "^4.3.0",
     "istanbul": "^0.4.5",
-    "lint-staged": "^8.0.4",
+    "lint-staged": "^10.4.0",
     "mocha": "^6.2.1",
     "nyc": "^11.4.1",
     "p-event": "^4.2.0",
@@ -130,6 +129,7 @@
     "ansi-escapes": "^4.3.1",
     "chalk": "^4.1.0",
     "chokidar": "^3.4.2",
-    "lodash": "^4.17.20"
+    "lodash": "^4.17.20",
+    "p-timeout": "^3.2.0"
   }
 }
