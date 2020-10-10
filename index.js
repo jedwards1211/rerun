@@ -34,7 +34,6 @@ const chokidar = require('chokidar')
 const killSignal = 'SIGTERM'
 
 let child
-let retryCount = 3
 
 function handleExit(code, signal) {
   cleanupChild()
@@ -44,16 +43,9 @@ function handleExit(code, signal) {
           signal
             ? `was killed with signal ${signal}`
             : `exited with code ${code}`
-        }}, ${retryCount} retries remaining`
+        }}`
       : chalk`{green [rerun] {bold ${command}} exited with code ${code}}`
   )
-  if (code) {
-    if (retryCount--) {
-      rerun()
-    }
-  } else {
-    retryCount = 3
-  }
   // istanbul ignore next
   if (process.send) process.send({ code, signal })
 }

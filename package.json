@@ -1,6 +1,6 @@
 {
   "name": "@jedwards1211/rerun",
-  "version": "0.0.0-development",
+  "version": "1.0.0",
   "description": "like nodemon but easier to use for running arbitrary commands",
   "main": "index.js",
   "author": "Andy Edwards",

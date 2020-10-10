@@ -32,5 +32,4 @@ be separated by `--`.
 
 # Notes
 
-Right now there are no options. It will retry three times on nonzero exit codes, and SIGTERM the command before
-restarting if it's still running.
+Right now there are no options. It will SIGTERM the command before restarting if it's still running.

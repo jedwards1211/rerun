@@ -11,7 +11,7 @@ const dedent = require('dedent')
 const temp = path.resolve(__dirname, '..', 'temp')
 
 describe('rerun', function() {
-  this.timeout(10000)
+  this.timeout(3000)
 
   let proc
   const rerun = (...args) => {
@@ -98,16 +98,13 @@ describe('rerun', function() {
         [rerun] echo exited with code 0\n`
     )
   })
-  it(`retries when command fails`, async function() {
+  it(`displays correct output when command fails`, async function() {
     const proc = rerun(
       path.join(temp, '**/*.{js,json}'),
       '--',
       'cat',
       path.join(temp, 'foo.txt')
     )
-    await emitted(proc, 'message')
-    await emitted(proc, 'message')
-    await emitted(proc, 'message')
     await emitted(proc, 'message')
     await delay(500)
 
@@ -121,16 +118,7 @@ describe('rerun', function() {
       dedent`
         [rerun] spawning cat...
         cat: ${path.join(temp, 'foo.txt')}: No such file or directory
-        [rerun] cat exited with code 1, 3 retries remaining
-        [rerun] spawning cat...
-        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
-        [rerun] cat exited with code 1, 2 retries remaining
-        [rerun] spawning cat...
-        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
-        [rerun] cat exited with code 1, 1 retries remaining
-        [rerun] spawning cat...
-        cat: ${path.join(temp, 'foo.txt')}: No such file or directory
-        [rerun] cat exited with code 1, 0 retries remaining\n`
+        [rerun] cat exited with code 1\n`
     )
   })
 })
