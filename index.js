@@ -31,6 +31,28 @@
     process.exit(1)
   }
 
+  let debug = () => {}
+  if (process.env.RERUN_DEBUG_FILE) {
+    const out = require('fs').createWriteStream(process.env.RERUN_DEBUG_FILE, {
+      flags: 'a',
+      encoding: 'utf8',
+    })
+    const { inspect } = require('util')
+    debug = (...args) => {
+      for (let i = 0; i < args.length; i++) {
+        let arg = args[i]
+        if (i > 0) out.write(' ')
+        if (typeof arg === 'function') arg = arg()
+        if (typeof arg !== 'string') arg = inspect(arg)
+        out.write(arg)
+      }
+      out.write('\n')
+    }
+  }
+
+  debug('\n======================= STARTING ========================\n')
+  debug({ cwd: process.cwd(), argv, globPatterns, command, args, ignored })
+
   const { spawn } = require('child_process')
   const chalk = require('chalk')
   const ansiEscapes = require('ansi-escapes')
@@ -43,7 +65,7 @@
 
   function handleExit(code, signal) {
     cleanupChild()
-    console.error(
+    const message =
       code || signal
         ? chalk`{red [rerun] {bold ${command}} ${
             signal
@@ -51,15 +73,19 @@
               : `exited with code ${code}`
           }}`
         : chalk`{green [rerun] {bold ${command}} exited with code ${code}}`
-    )
+
+    console.error(message)
+    debug(message)
     // istanbul ignore next
     if (process.send) process.send({ code, signal })
   }
   function handleError(error) {
     cleanupChild()
-    console.error(
-      chalk`{red [rerun] error spawning {bold ${command}}: ${error.message}}`
-    )
+    const message = chalk`{red [rerun] error spawning {bold ${command}}: ${
+      error.message
+    }}`
+    console.error(message)
+    debug(message)
     // istanbul ignore next
     if (process.send) process.send({ error: error.message })
   }
@@ -77,7 +103,9 @@
     }
 
     process.stderr.write(ansiEscapes.clearTerminal)
-    console.error(chalk`{yellow [rerun] spawning {bold ${command}}...}`)
+    const message = chalk`{yellow [rerun] spawning {bold ${command}}...}`
+    console.error(message)
+    debug(message)
 
     child = spawn(command, args, {
       stdio: 'inherit',
@@ -86,19 +114,36 @@
     child.on('error', handleError)
     child.on('exit', handleExit)
   }
+  const chokidarOptions = {}
+  if (ignored) chokidarOptions.ignored = ignored
 
-  const watcher = chokidar.watch(globPatterns, { ignored })
+  const watcher = chokidar.watch(globPatterns, chokidarOptions)
 
   const handleChange = debounce(
     path => {
-      console.error(
-        chalk`{yellow [rerun] File changed: ${path}.  Restarting...}`
-      )
+      const message = chalk`{yellow [rerun] File changed: ${path}.  Restarting...}`
+      console.error(message)
+      debug(message)
       rerun()
     },
     100,
     { maxWait: 1000 }
   )
+
+  if (process.env.RERUN_DEBUG_FILE) {
+    for (const event of [
+      'add',
+      'change',
+      'unlink',
+      'addDir',
+      'unlinkDir',
+      'error',
+      'ready',
+      'raw',
+    ]) {
+      watcher.on(event, file => debug('[chokidar]', event, file))
+    }
+  }
 
   watcher.on('ready', () => {
     watcher.on('add', handleChange)
