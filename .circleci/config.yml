@@ -17,7 +17,7 @@ jobs:
           command: yarn install --frozen-lockfile
       - run:
           name: build
-          command: CHOKIDAR_USEPOLLING=1 RERUN_DEBUG_FILE=$(pwd)/rerun-debug yarn prepublishOnly
+          command: RERUN_DEBUG_FILE=$(pwd)/rerun-debug yarn prepublishOnly
       - run:
           name: upload test coverage
           command: yarn codecov || true

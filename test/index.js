@@ -76,6 +76,9 @@ describe('rerun', function() {
       })
       it('restarts when watched files change, but not when unwatched files change', async function() {
         await fs.mkdir(path.join(temp, 'subdir'))
+        await fs.writeJson(path.join(temp, 'a.json'), {})
+        await fs.writeFile(path.join(temp, 'subdir', 'b.js'), '', 'utf8')
+        await fs.writeFile(path.join(temp, 'b.txt'), '', 'utf8')
 
         const proc = rerun(...watchArgs, 'echo', 'test')
         await emitted(proc, 'message')
