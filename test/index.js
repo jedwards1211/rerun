@@ -7,19 +7,17 @@ const delay = require('waait')
 const stripAnsi = require('strip-ansi')
 const emitted = require('p-event')
 const dedent = require('dedent')
-const _touch = require('touch')
-const { promisify } = require('util')
-const touch = promisify(_touch)
-
-const temp = path.resolve(__dirname, '..', 'temp')
+const tempy = require('tempy')
 
 describe('rerun', function() {
   this.timeout(3000)
 
+  let temp = path.resolve(tempy.directory({ prefix: 'rerun' }), 'test')
+
   let proc
   const rerun = (...args) => {
     proc = spawn(require.resolve('..'), args, {
-      cwd: __dirname,
+      cwd: temp,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
@@ -30,6 +28,7 @@ describe('rerun', function() {
   beforeEach(async function() {
     await fs.remove(temp)
     await fs.mkdir(temp)
+    await fs.writeFile(path.join(temp, '.gitignore'), '*.txt\n', 'utf8')
   })
   afterEach(async function() {
     if (proc) proc.kill()
@@ -38,6 +37,16 @@ describe('rerun', function() {
   after(async function() {
     if (this.currentTest.state === 'passed') {
       await fs.remove(temp)
+    }
+    if (process.env.RERUN_DEBUG_FILE) {
+      const stream = fs.createReadStream(process.env.RERUN_DEBUG_FILE, 'utf8')
+      await Promise.all([
+        emitted(stream, 'end'),
+        stream.pipe(
+          process.stdout,
+          { end: false }
+        ),
+      ])
     }
   })
   it(`incomplete arguments`, async function() {
@@ -65,81 +74,42 @@ describe('rerun', function() {
           '[rerun] spawning echo...\n[rerun] echo exited with code 0\n'
         )
       })
-      if (auto) {
-        it('restarts when watched files change, but not when unwatched files change', async function() {
-          await fs.mkdir(path.join(temp, 'subdir'))
+      it('restarts when watched files change, but not when unwatched files change', async function() {
+        await fs.mkdir(path.join(temp, 'subdir'))
 
-          const proc = rerun(...watchArgs, 'echo', 'test')
-          await emitted(proc, 'message')
+        const proc = rerun(...watchArgs, 'echo', 'test')
+        await emitted(proc, 'message')
 
-          await Promise.all([emitted(proc, 'message'), touch(__filename)])
-          await Promise.all([
-            emitted(proc, 'message'),
-            touch(path.resolve(__dirname, 'configure.js')),
-          ])
+        await Promise.all([
+          emitted(proc, 'message'),
+          fs.writeJson(path.join(temp, 'a.json'), { foo: 'bar' }),
+        ])
 
-          await fs.writeFile(path.join(temp, 'b.txt'), 'blah', 'utf8')
-          await delay(500)
+        await Promise.all([
+          emitted(proc, 'message'),
+          fs.writeFile(path.join(temp, 'subdir', 'b.js'), 'blah', 'utf8'),
+        ])
 
-          const [{ stdout, stderr }] = await Promise.all([
-            proc.catch(e => e),
-            proc.kill(),
-          ])
-          expect(stdout).to.equal('test\ntest\ntest\n')
-          expect(stripAnsi(stderr)).to.equal(
-            dedent`
+        await fs.writeFile(path.join(temp, 'b.txt'), 'blah', 'utf8')
+        await delay(500)
+
+        const [{ stdout, stderr }] = await Promise.all([
+          proc.catch(e => e),
+          proc.kill(),
+        ])
+        expect(stdout).to.equal('test\ntest\ntest\n')
+        expect(stripAnsi(stderr)).to.equal(
+          dedent`
               [rerun] spawning echo...
               [rerun] echo exited with code 0
-              [rerun] File changed: index.js.  Restarting...
+              [rerun] File changed: a.json.  Restarting...
               [rerun] spawning echo...
               [rerun] echo exited with code 0
-              [rerun] File changed: configure.js.  Restarting...
+              [rerun] File changed: subdir/b.js.  Restarting...
               [rerun] spawning echo...
               [rerun] echo exited with code 0\n`
-          )
-        })
-      } else {
-        it('restarts when watched files change, but not when unwatched files change', async function() {
-          await fs.mkdir(path.join(temp, 'subdir'))
-
-          const proc = rerun(...watchArgs, 'echo', 'test')
-          await emitted(proc, 'message')
-
-          await Promise.all([
-            emitted(proc, 'message'),
-            fs.writeJson(path.join(temp, 'a.json'), { foo: 'bar' }),
-          ])
-
-          await Promise.all([
-            emitted(proc, 'message'),
-            fs.writeFile(path.join(temp, 'subdir', 'b.js'), 'blah', 'utf8'),
-          ])
-
-          await fs.writeFile(path.join(temp, 'b.txt'), 'blah', 'utf8')
-          await delay(500)
-
-          const [{ stdout, stderr }] = await Promise.all([
-            proc.catch(e => e),
-            proc.kill(),
-          ])
-          expect(stdout).to.equal('test\ntest\ntest\n')
-          expect(stripAnsi(stderr)).to.equal(
-            dedent`
-              [rerun] spawning echo...
-              [rerun] echo exited with code 0
-              [rerun] File changed: ${path.join(temp, 'a.json')}.  Restarting...
-              [rerun] spawning echo...
-              [rerun] echo exited with code 0
-              [rerun] File changed: ${path.join(
-                temp,
-                'subdir',
-                'b.js'
-              )}.  Restarting...
-              [rerun] spawning echo...
-              [rerun] echo exited with code 0\n`
-          )
-        })
-      }
+        )
+      })
       it(`displays correct output when command fails`, async function() {
         const proc = rerun(...watchArgs, 'cat', path.join(temp, 'foo.txt'))
         await emitted(proc, 'message')

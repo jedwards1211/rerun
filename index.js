@@ -12,6 +12,8 @@
     console.error('   or: rerun <command>')
   }
 
+  const path = require('path')
+
   let globPatterns, command, args, ignored
 
   const doubleDash = argv.indexOf('--')
@@ -21,7 +23,9 @@
     args = argv.slice(1)
     ignored = await require('./gitignoreToChokidar').loadIgnoreFiles()
   } else {
-    globPatterns = argv.slice(0, doubleDash)
+    globPatterns = argv
+      .slice(0, doubleDash)
+      .map(p => path.relative(process.cwd(), path.resolve(p)))
     command = argv[doubleDash + 1]
     args = argv.slice(doubleDash + 2)
   }
@@ -120,8 +124,8 @@
   const watcher = chokidar.watch(globPatterns, chokidarOptions)
 
   const handleChange = debounce(
-    path => {
-      const message = chalk`{yellow [rerun] File changed: ${path}.  Restarting...}`
+    p => {
+      const message = chalk`{yellow [rerun] File changed: ${p}.  Restarting...}`
       console.error(message)
       debug(message)
       rerun()

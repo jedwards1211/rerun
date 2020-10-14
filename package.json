@@ -106,7 +106,7 @@
     "promisify-child-process": "^4.1.1",
     "semantic-release": "^17.1.2",
     "strip-ansi": "^6.0.0",
-    "touch": "^3.1.0",
+    "tempy": "^1.0.0",
     "waait": "^1.0.5"
   },
   "renovate": {
