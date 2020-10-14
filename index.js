@@ -119,7 +119,11 @@
     child.on('error', handleError)
     child.on('exit', handleExit)
   }
-  const watcher = chokidar.watch(globPatterns, { cwd, ignored })
+  const watcher = chokidar.watch(globPatterns, {
+    cwd,
+    ignored,
+    usePolling: Boolean(process.env.CHOKIDAR_USEPOLLING),
+  })
 
   const handleChange = debounce(
     p => {
