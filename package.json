@@ -12,7 +12,8 @@
     "rerun": "./index.js"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "gitignoreToChokidar.js"
   ],
   "scripts": {
     "lint": "eslint *.js test --cache",
@@ -105,6 +106,7 @@
     "promisify-child-process": "^4.1.1",
     "semantic-release": "^17.1.2",
     "strip-ansi": "^6.0.0",
+    "touch": "^3.1.0",
     "waait": "^1.0.5"
   },
   "renovate": {
@@ -129,6 +131,7 @@
     "ansi-escapes": "^4.3.1",
     "chalk": "^4.1.0",
     "chokidar": "^3.4.2",
+    "glob-gitignore": "^1.0.14",
     "lodash": "^4.17.20",
     "p-timeout": "^3.2.0"
   }

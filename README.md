@@ -30,6 +30,11 @@ rerun <files, directories, glob patterns ...> -- <command>
 Any number of directories/glob patterns can be given, and any number of command arguments, they just have to
 be separated by `--`.
 
+If you omit the `--`, it assumes you everything is the command and tries to intelligently watch all files that
+aren't `.gitignore`d.
+
+If you want to run a shell command, you may have to quote it.
+
 # Notes
 
 Right now there are no options. It will SIGTERM the command before restarting if it's still running.
