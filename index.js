@@ -15,27 +15,6 @@
   const path = require('path')
   const cwd = process.cwd()
 
-  let globPatterns, command, args, ignored
-
-  const doubleDash = argv.indexOf('--')
-  if (doubleDash < 0) {
-    globPatterns = ['**']
-    command = argv[0]
-    args = argv.slice(1)
-    ignored = await require('./gitignoreToChokidar').loadIgnoreFiles()
-  } else {
-    globPatterns = argv
-      .slice(0, doubleDash)
-      .map(p => path.relative(cwd, path.resolve(p)))
-    command = argv[doubleDash + 1]
-    args = argv.slice(doubleDash + 2)
-  }
-
-  if (!command || !globPatterns.length) {
-    printUsage()
-    process.exit(1)
-  }
-
   let debug = () => {}
   if (process.env.RERUN_DEBUG_FILE) {
     const out = require('fs').createWriteStream(process.env.RERUN_DEBUG_FILE, {
@@ -55,10 +34,46 @@
     }
   }
 
+  let globPatterns, command, args, ignored
+
+  const { spawn, spawnSync } = require('child_process')
+
+  const doubleDash = argv.indexOf('--')
+  if (doubleDash < 0) {
+    globPatterns = ['**']
+    command = argv[0]
+    args = argv.slice(1)
+    let projectRoot
+    try {
+      projectRoot = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+        encoding: 'utf8',
+        maxBuffer: 100000,
+      }).stdout.trim()
+      debug('found parent git directory:', projectRoot)
+    } catch (error) {
+      console.error('failed to find parent git directory:', error.stack)
+      debug('failed to find parent git directory:', error.stack)
+      projectRoot = process.cwd()
+    }
+    ignored = await require('./gitignoreToChokidar').loadIgnoreFiles({
+      projectRoot,
+    })
+  } else {
+    globPatterns = argv
+      .slice(0, doubleDash)
+      .map(p => path.relative(cwd, path.resolve(p)))
+    command = argv[doubleDash + 1]
+    args = argv.slice(doubleDash + 2)
+  }
+
+  if (!command || !globPatterns.length) {
+    printUsage()
+    process.exit(1)
+  }
+
   debug('\n======================= STARTING ========================\n')
   debug({ cwd, argv, globPatterns, command, args, ignored })
 
-  const { spawn } = require('child_process')
   const chalk = require('chalk')
   const ansiEscapes = require('ansi-escapes')
   const debounce = require('lodash/debounce')

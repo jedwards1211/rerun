@@ -28,6 +28,7 @@ describe('rerun', function() {
   beforeEach(async function() {
     await fs.remove(temp)
     await fs.mkdir(temp)
+    await spawn('git', ['init'], { cwd: temp })
     await fs.writeFile(path.join(temp, '.gitignore'), '*.txt\n', 'utf8')
   })
   afterEach(async function() {
