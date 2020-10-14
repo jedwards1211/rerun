@@ -14,12 +14,10 @@ jobs:
             echo "registry=https://registry.npmjs.org/" >> .npmrc
       - run:
           name: Install Dependencies
-          command: |
-            yarn install --frozen-lockfile
-            yarn add --dev fsevents
+          command: yarn install --frozen-lockfile
       - run:
           name: build
-          command: RERUN_DEBUG_FILE=$(pwd)/rerun-debug yarn prepublishOnly
+          command: CHOKIDAR_USEPOLLING=1 RERUN_DEBUG_FILE=$(pwd)/rerun-debug yarn prepublishOnly
       - run:
           name: upload test coverage
           command: yarn codecov || true
