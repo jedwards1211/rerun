@@ -13,6 +13,7 @@
   }
 
   const path = require('path')
+  const cwd = process.cwd()
 
   let globPatterns, command, args, ignored
 
@@ -25,7 +26,7 @@
   } else {
     globPatterns = argv
       .slice(0, doubleDash)
-      .map(p => path.relative(process.cwd(), path.resolve(p)))
+      .map(p => path.relative(cwd, path.resolve(p)))
     command = argv[doubleDash + 1]
     args = argv.slice(doubleDash + 2)
   }
@@ -55,7 +56,7 @@
   }
 
   debug('\n======================= STARTING ========================\n')
-  debug({ cwd: process.cwd(), argv, globPatterns, command, args, ignored })
+  debug({ cwd, argv, globPatterns, command, args, ignored })
 
   const { spawn } = require('child_process')
   const chalk = require('chalk')
@@ -118,10 +119,7 @@
     child.on('error', handleError)
     child.on('exit', handleExit)
   }
-  const chokidarOptions = {}
-  if (ignored) chokidarOptions.ignored = ignored
-
-  const watcher = chokidar.watch(globPatterns, chokidarOptions)
+  const watcher = chokidar.watch(globPatterns, { cwd, ignored })
 
   const handleChange = debounce(
     p => {
