@@ -151,6 +151,7 @@
   }
 
   watcher.on('ready', () => {
+    if (process.send) process.send({ ready: true })
     watcher.on('add', handleChange)
     watcher.on('unlink', handleChange)
   })
