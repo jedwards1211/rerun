@@ -122,7 +122,6 @@
   const watcher = chokidar.watch(globPatterns, {
     cwd,
     ignored,
-    usePolling: Boolean(process.env.CHOKIDAR_USEPOLLING),
   })
 
   const handleChange = debounce(
