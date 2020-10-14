@@ -20,7 +20,7 @@ jobs:
           command: CHOKIDAR_USEPOLLING=1 RERUN_DEBUG_FILE=$(pwd)/rerun-debug yarn prepublishOnly
       - run:
           name: upload test coverage
-          command: yarn codecov || true
+          command: yarn codecov
       - run:
           name: release
-          command: yarn run semantic-release || true
+          command: yarn run semantic-release
