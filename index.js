@@ -34,6 +34,11 @@
     }
   }
 
+  const errorAndDebug = (...args) => {
+    debug(...args)
+    console.error(...args)
+  }
+
   let globPatterns, command, args, ignored
 
   const { spawn, spawnSync } = require('child_process')
@@ -51,8 +56,7 @@
       }).stdout.trim()
       debug('found parent git directory:', projectRoot)
     } catch (error) {
-      console.error('failed to find parent git directory:', error.stack)
-      debug('failed to find parent git directory:', error.stack)
+      errorAndDebug('failed to find parent git directory:', error.stack)
       projectRoot = process.cwd()
     }
     ignored = await require('./gitignoreToChokidar').loadIgnoreFiles({
@@ -79,13 +83,64 @@
   const debounce = require('lodash/debounce')
   const chokidar = require('chokidar')
 
-  const killSignal = 'SIGTERM'
+  const STARTING = 'STARTING'
+  const STARTING_FILE_CHANGED = 'STARTING_FILE_CHANGED'
+  const RUNNING = 'RUNNING'
+  const SUCCEEDED = 'SUCCEEDED'
+  const FAILED = 'FAILED'
+  const RESTARTING = 'RESTARTING'
+  const KILLED = 'KILLED'
+  let state = STARTING
+
+  function setState(nextState) {
+    if (state === nextState) return
+    state = nextState
+    if (process.send) process.send({ state })
+  }
 
   let child
 
+  const watcher = chokidar.watch(globPatterns, {
+    cwd,
+    ignored,
+  })
+
+  function handleKill(signal) {
+    if (state === KILLED || !child) {
+      if (child) {
+        errorAndDebug(
+          chalk`{red [rerun] got second ${signal}, ${
+            child
+              ? `sending SIGKILL to {bold ${command}}`
+              : `no child is running`
+          }`
+        )
+        child.kill('SIGKILL')
+      }
+      process.exit(1)
+    }
+
+    errorAndDebug(
+      chalk`{red [rerun] got ${signal}, ${
+        child ? `sending ${signal} to {bold ${command}}` : `no child is running`
+      }`
+    )
+    setState(KILLED)
+    if (child) child.kill(signal)
+    watcher.removeAllListeners()
+    watcher.close().catch(error => {
+      errorAndDebug(
+        chalk`{yellow [rerun] error closing file watcher: ${error.message}}`
+      )
+    })
+  }
+
+  process.on('SIGINT', () => handleKill('SIGINT'))
+  process.on('SIGTERM', () => handleKill('SIGTERM'))
+
   function handleExit(code, signal) {
     cleanupChild()
-    const message =
+    errorAndDebug(
       code || signal
         ? chalk`{red [rerun] {bold ${command}} ${
             signal
@@ -93,21 +148,52 @@
               : `exited with code ${code}`
           }}`
         : chalk`{green [rerun] {bold ${command}} exited with code ${code}}`
-
-    console.error(message)
-    debug(message)
+    )
     // istanbul ignore next
     if (process.send) process.send({ code, signal })
+
+    switch (state) {
+      case KILLED:
+        process.exit(1)
+        break
+      case RESTARTING:
+      case STARTING_FILE_CHANGED:
+        start()
+        break
+      case STARTING:
+      case RUNNING:
+        setState(code || signal ? FAILED : SUCCEEDED)
+        break
+    }
   }
   function handleError(error) {
     cleanupChild()
-    const message = chalk`{red [rerun] error spawning {bold ${command}}: ${
-      error.message
-    }}`
-    console.error(message)
-    debug(message)
-    // istanbul ignore next
+    errorAndDebug(
+      chalk`{red [rerun] error spawning {bold ${command}}: ${error.message}}`
+    )
     if (process.send) process.send({ error: error.message })
+
+    switch (state) {
+      case KILLED:
+        if (child) child.kill('SIGKILL')
+        process.exit(1)
+        break
+      case RESTARTING:
+      case STARTING_FILE_CHANGED:
+        start()
+        break
+      case STARTING:
+        setState(FAILED)
+        break
+    }
+  }
+  function handleSpawn() {
+    if (state === STARTING_FILE_CHANGED) {
+      setState(RESTARTING)
+      if (child) child.kill('SIGINT')
+    } else {
+      setState(RUNNING)
+    }
   }
 
   function cleanupChild() {
@@ -116,16 +202,11 @@
     child = null
   }
 
-  function rerun() {
-    if (child) {
-      child.kill(killSignal)
-      cleanupChild()
-    }
+  function start() {
+    setState(STARTING)
 
     process.stderr.write(ansiEscapes.clearTerminal)
-    const message = chalk`{yellow [rerun] spawning {bold ${command}}...}`
-    console.error(message)
-    debug(message)
+    errorAndDebug(chalk`{yellow [rerun] spawning {bold ${command}}...}`)
 
     child = spawn(command, args, {
       stdio: 'inherit',
@@ -133,18 +214,29 @@
     })
     child.on('error', handleError)
     child.on('exit', handleExit)
+    child.on('spawn', handleSpawn)
   }
-  const watcher = chokidar.watch(globPatterns, {
-    cwd,
-    ignored,
-  })
 
-  const handleChange = debounce(
+  const handleFileChange = debounce(
     p => {
-      const message = chalk`{yellow [rerun] File changed: ${p}.  Restarting...}`
-      console.error(message)
-      debug(message)
-      rerun()
+      if (state !== KILLED) {
+        errorAndDebug(
+          chalk`{yellow [rerun] File changed: ${p}.  Restarting...}`
+        )
+      }
+      switch (state) {
+        case STARTING:
+          setState(STARTING_FILE_CHANGED)
+          break
+        case RUNNING:
+          setState(RESTARTING)
+          if (child) child.kill('SIGINT')
+          break
+        case SUCCEEDED:
+        case FAILED:
+          start()
+          break
+      }
     },
     100,
     { maxWait: 1000 }
@@ -167,10 +259,10 @@
 
   watcher.on('ready', () => {
     if (process.send) process.send({ ready: true })
-    watcher.on('add', handleChange)
-    watcher.on('unlink', handleChange)
+    watcher.on('add', handleFileChange)
   })
-  watcher.on('change', handleChange)
+  watcher.on('change', handleFileChange)
+  watcher.on('unlink', handleFileChange)
 
-  rerun()
+  start()
 })()
