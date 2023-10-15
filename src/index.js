@@ -65,10 +65,11 @@
       projectRoot = process.cwd()
     }
     ignored = (path, stats) => {
-      if (!stats) stats = fs.statSync(path)
-      const result = gitignore.ignoresSync(
-        stats.isDirectory() ? path + '/' : path
-      )
+      let result = false
+      if (!/(^|[\\/])\*\*?([\\/]|$)/.test(path)) {
+        if (!stats) stats = fs.statSync(path)
+        result = gitignore.ignoresSync(stats.isDirectory() ? path + '/' : path)
+      }
       debug('ignored', path, stats, result)
       return result
     }
