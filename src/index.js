@@ -67,8 +67,14 @@
     ignored = (path, stats) => {
       let result = false
       if (!/(^|[\\/])\*\*?([\\/]|$)/.test(path)) {
-        if (!stats) stats = fs.statSync(path)
-        result = gitignore.ignoresSync(stats.isDirectory() ? path + '/' : path)
+        try {
+          if (!stats) stats = fs.statSync(path)
+          result = gitignore.ignoresSync(
+            stats.isDirectory() ? path + '/' : path
+          )
+        } catch (error) {
+          // ignore
+        }
       }
       debug('ignored', path, stats, result)
       return result
