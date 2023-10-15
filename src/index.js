@@ -45,7 +45,7 @@
   let globPatterns, command, args, ignored
 
   const { spawn, spawnSync } = require('child_process')
-  const Gitignore = require('gitignore-fs').default
+  const Gitignore = require('gitignore-fs')
   const gitignore = new Gitignore()
 
   const doubleDash = argv.indexOf('--')
