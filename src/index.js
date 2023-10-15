@@ -2,7 +2,7 @@
 
 /* eslint-disable no-console */
 
-;(async function() {
+;(async function () {
   const argv = process.argv.slice(2)
 
   function printUsage() {
@@ -13,24 +13,27 @@
   }
 
   const path = require('path')
+  const fs = require('fs')
   const cwd = process.cwd()
 
   let debug = () => {}
+  let debugOut
   if (process.env.RERUN_DEBUG_FILE) {
-    const out = require('fs').createWriteStream(process.env.RERUN_DEBUG_FILE, {
+    debugOut = fs.createWriteStream(process.env.RERUN_DEBUG_FILE, {
       flags: 'a',
       encoding: 'utf8',
     })
     const { inspect } = require('util')
     debug = (...args) => {
+      if (!debugOut) return
       for (let i = 0; i < args.length; i++) {
         let arg = args[i]
-        if (i > 0) out.write(' ')
+        if (i > 0) debugOut.write(' ')
         if (typeof arg === 'function') arg = arg()
         if (typeof arg !== 'string') arg = inspect(arg)
-        out.write(arg)
+        debugOut.write(arg)
       }
-      out.write('\n')
+      debugOut.write('\n')
     }
   }
 
@@ -42,6 +45,8 @@
   let globPatterns, command, args, ignored
 
   const { spawn, spawnSync } = require('child_process')
+  const Gitignore = require('gitignore-fs').default
+  const gitignore = new Gitignore()
 
   const doubleDash = argv.indexOf('--')
   if (doubleDash < 0) {
@@ -59,13 +64,18 @@
       errorAndDebug('failed to find parent git directory:', error.stack)
       projectRoot = process.cwd()
     }
-    ignored = await require('./gitignoreToChokidar').loadIgnoreFiles({
-      projectRoot,
-    })
+    ignored = (path, stats) => {
+      if (!stats) stats = fs.statSync(path)
+      const result = gitignore.ignoresSync(
+        stats.isDirectory() ? path + '/' : path
+      )
+      debug('ignored', path, stats, result)
+      return result
+    }
   } else {
     globPatterns = argv
       .slice(0, doubleDash)
-      .map(p => path.relative(cwd, path.resolve(p)))
+      .map((p) => path.relative(cwd, path.resolve(p)))
     command = argv[doubleDash + 1]
     args = argv.slice(doubleDash + 2)
   }
@@ -105,7 +115,7 @@
     ignored,
   })
 
-  function handleKill(signal) {
+  async function handleKill(signal) {
     if (state === KILLED || !child) {
       if (child) {
         errorAndDebug(
@@ -123,16 +133,27 @@
     errorAndDebug(
       chalk`{red [rerun] got ${signal}, ${
         child ? `sending ${signal} to {bold ${command}}` : `no child is running`
-      }`
+      }}`
     )
     setState(KILLED)
     if (child) child.kill(signal)
     watcher.removeAllListeners()
-    watcher.close().catch(error => {
+    watcher.close().catch((error) => {
       errorAndDebug(
         chalk`{yellow [rerun] error closing file watcher: ${error.message}}`
       )
     })
+    if (debugOut) {
+      const _debugOut = debugOut
+      debugOut = undefined
+      await Promise.all([
+        new Promise((resolve) => {
+          _debugOut.once('close', resolve)
+          _debugOut.once('error', resolve)
+        }),
+        _debugOut.end(),
+      ])
+    }
   }
 
   process.on('SIGINT', () => handleKill('SIGINT'))
@@ -218,7 +239,7 @@
   }
 
   const handleFileChange = debounce(
-    p => {
+    (p) => {
       if (state !== KILLED) {
         errorAndDebug(
           chalk`{yellow [rerun] File changed: ${p}.  Restarting...}`
@@ -253,7 +274,7 @@
       'ready',
       'raw',
     ]) {
-      watcher.on(event, file => debug('[chokidar]', event, file))
+      watcher.on(event, (file) => debug('[chokidar]', event, file))
     }
   }
 

@@ -9,33 +9,37 @@ const emitted = require('p-event')
 const dedent = require('dedent')
 const tempy = require('tempy')
 
-describe('rerun', function() {
+if (process.env.RERUN_DEBUG_FILE) {
+  process.env.RERUN_DEBUG_FILE = path.resolve(process.env.RERUN_DEBUG_FILE)
+}
+
+describe('rerun', function () {
   this.timeout(3000)
 
   let temp = path.resolve(tempy.directory({ prefix: 'rerun' }), 'test')
 
   let proc
   const rerun = (...args) => {
-    proc = spawn(require.resolve('..'), args, {
+    proc = spawn(require.resolve('../src'), args, {
       cwd: temp,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
     })
-    proc.catch(e => e)
+    proc.catch((e) => e)
     return proc
   }
-  beforeEach(async function() {
+  beforeEach(async function () {
     await fs.remove(temp)
     await fs.mkdir(temp)
     await spawn('git', ['init'], { cwd: temp })
     await fs.writeFile(path.join(temp, '.gitignore'), '*.txt\n', 'utf8')
   })
-  afterEach(async function() {
+  afterEach(async function () {
     if (proc) proc.kill()
     proc = null
   })
-  after(async function() {
+  after(async function () {
     if (this.currentTest.state === 'passed') {
       await fs.remove(temp)
     }
@@ -43,14 +47,11 @@ describe('rerun', function() {
       const stream = fs.createReadStream(process.env.RERUN_DEBUG_FILE, 'utf8')
       await Promise.all([
         emitted(stream, 'end'),
-        stream.pipe(
-          process.stdout,
-          { end: false }
-        ),
+        stream.pipe(process.stdout, { end: false }),
       ])
     }
   })
-  it(`incomplete arguments`, async function() {
+  it(`incomplete arguments`, async function () {
     await rerun([]).catch(({ code, stderr }) => {
       expect(code).to.equal(1)
       expect(stderr).to.equal(
@@ -61,13 +62,13 @@ describe('rerun', function() {
     })
   })
   for (const auto of [false, true]) {
-    describe(auto ? 'auto mode' : 'manual mode', function() {
+    describe(auto ? 'auto mode' : 'manual mode', function () {
       const watchArgs = auto ? [] : [path.join(temp, '**/*.{js,json}'), '--']
-      it('runs once when no files change', async function() {
+      it('runs once when no files change', async function () {
         const proc = rerun(...watchArgs, 'echo', 'test')
-        await emitted(proc, 'message')
+        await emitted(proc, 'message', (e) => typeof e.code === 'number')
         const [{ stdout, stderr }] = await Promise.all([
-          proc.catch(e => e),
+          proc.catch((e) => e),
           proc.kill(),
         ])
         expect(stdout).to.equal('test\n')
@@ -75,13 +76,13 @@ describe('rerun', function() {
           '[rerun] spawning echo...\n[rerun] echo exited with code 0\n'
         )
       })
-      it('restarts when watched files change, but not when unwatched files change', async function() {
+      it('restarts when watched files change, but not when unwatched files change', async function () {
         await fs.mkdir(path.join(temp, 'subdir'))
 
         const proc = rerun(...watchArgs, 'echo', 'test')
         await Promise.all([
-          emitted(proc, 'message', m => m.code === 0),
-          emitted(proc, 'message', m => m.ready),
+          emitted(proc, 'message', (m) => m.code === 0),
+          emitted(proc, 'message', (m) => m.ready),
         ])
 
         await Promise.all([
@@ -98,7 +99,7 @@ describe('rerun', function() {
         await delay(500)
 
         const [{ stdout, stderr }] = await Promise.all([
-          proc.catch(e => e),
+          proc.catch((e) => e),
           proc.kill(),
         ])
         expect(stdout).to.equal('test\ntest\ntest\n')
@@ -114,13 +115,13 @@ describe('rerun', function() {
               [rerun] echo exited with code 0\n`
         )
       })
-      it(`displays correct output when command fails`, async function() {
+      it(`displays correct output when command fails`, async function () {
         const proc = rerun(...watchArgs, 'cat', path.join(temp, 'foo.txt'))
         await emitted(proc, 'message')
         await delay(500)
 
         const [{ stdout, stderr }] = await Promise.all([
-          proc.catch(e => e),
+          proc.catch((e) => e),
           proc.kill(),
         ])
 
